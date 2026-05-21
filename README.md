@@ -54,6 +54,8 @@ Todas las funciones de `lib/li.js` usan una capa de persistencia local (`lib/sto
 
 ```powershell
 # Ver estadísticas del cache
+| `node li-api.js search-jobs <keywords>` | Buscar ofertas de empleo |
+| `node li-api.js job-details <job-urn>` | Detalles de una oferta de empleo |
 node li-api.js stats
 ```
 
@@ -110,6 +112,21 @@ node li-api.js newsletters johndoe
 #    Título: Cómo automatizar procesos con IA
 #    URL: https://www.linkedin.com/pulse/...
 ```
+
+```powershell
+# Buscar empleos
+node li-api.js search-jobs "software engineer"
+# => --- Trabajo 1 ---
+#    Título: Senior Software Engineer
+#    Empresa: ACME Corp
+#    Ubicación: San Francisco, CA
+#    URN: urn:li:fsd_jobPosting:12345...
+
+# Detalles de un empleo
+node li-api.js job-details "urn:li:fsd_jobPosting:12345"
+# => { "title": "Senior Software Engineer", "company": "ACME Corp", ... }
+```
+
 
 ## API Programática (lib/li.js)
 
@@ -292,6 +309,61 @@ Envía un mensaje de texto a una conversación. Invalida cache de mensajes.
 
 ---
 
+### `searchJobs(cdp, keywords, options)`
+
+Busca ofertas de empleo en LinkedIn.
+
+**Endpoint:** `GET /voyager/api/search/blended`
+
+**Options:**
+- `locationUrn` (string): geoId de ubicación (ej. `102095887` para México)
+- `count` (number): resultados por página (default: 25)
+- `start` (number): offset (default: 0)
+
+**Respuesta:**
+```json
+{
+  "jobs": [
+    {
+      "urn": "urn:li:fsd_jobPosting:...",
+      "title": "Senior Software Engineer",
+      "company": "ACME Corp",
+      "location": "San Francisco, CA",
+      "description": "We are looking for...",
+      "listedAt": 1774736015305,
+      "url": "https://www.linkedin.com/jobs/view/..."
+    }
+  ],
+  "total": 150
+}
+```
+
+---
+
+### `getJobDetails(cdp, jobUrn)`
+
+Devuelve los detalles completos de una oferta.
+
+**Endpoint:** `GET /voyager/api/jobs/jobPostings`
+
+**Respuesta:**
+```json
+{
+  "urn": "urn:li:fsd_jobPosting:...",
+  "title": "Senior Software Engineer",
+  "description": "Full description...",
+  "company": "ACME Corp",
+  "location": "San Francisco, CA",
+  "listedAt": 1774736015305,
+  "applicants": 42,
+  "workType": "Remote",
+  "jobState": "LISTED"
+}
+```
+
+
+---
+
 ### `voyager(cdp, method, path, body?)`
 
 Función de bajo nivel para inyectar cualquier petición fetch dentro del navegador.
@@ -388,6 +460,7 @@ li-automation/
 3. **sendMessage**: aún usa el endpoint REST legacy. Puede fallar si LinkedIn lo migra a GraphQL.
 4. **Posts**: el texto se extrae del componente `articleComponent`. Posts de solo imagen/video pueden devolver texto vacío.
 5. **Dependencia de sesión**: si la sesión de LinkedIn expira, hay que volver a hacer login manualmente en Edge.
+6. **Job Search**: usa el endpoint REST `/search/blended` que puede devolver resultados mezclados (no solo jobs). Para búsqueda pura de empleos, los queryIds GraphQL específicos de jobs suelen ser más precisos pero rotan con frecuencia.
 
 ## Licencia
 

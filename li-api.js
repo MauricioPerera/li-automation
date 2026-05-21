@@ -117,6 +117,30 @@ async function main() {
                 console.log('Mensaje enviado:', JSON.stringify(res, null, 2));
                 break;
             }
+                        case 'search-jobs': {
+                const keywords = process.argv[3];
+                if (!keywords) { console.error('Falta keywords'); process.exit(1); }
+                const { jobs, total } = await searchJobs(cdp, keywords, { count: 25, start: 0 });
+                for (let i = 0; i < jobs.length; i++) {
+                    const j = jobs[i];
+                    console.log(`--- Trabajo ${i + 1} ---`);
+                    console.log('Título:', j.title);
+                    console.log('Empresa:', j.company);
+                    console.log('Ubicación:', j.location);
+                    console.log('URN:', j.urn);
+                    if (j.description) console.log('Desc:', j.description.slice(0, 120));
+                    console.log();
+                }
+                console.log(`Total encontrados: ${total}`);
+                break;
+            }
+            case 'job-details': {
+                const jobUrn = process.argv[3];
+                if (!jobUrn) { console.error('Falta job-urn'); process.exit(1); }
+                const job = await getJobDetails(cdp, jobUrn);
+                console.log(JSON.stringify(job, null, 2));
+                break;
+            }
             default: {
                 console.log(`Comandos disponibles:
   node li-api.js profile
@@ -125,7 +149,10 @@ async function main() {
   node li-api.js newsletters [public-id]
   node li-api.js conversations
   node li-api.js messages <conversation-id>
-  node li-api.js stats\n  node li-api.js send <conversation-id> <mensaje>
+  node li-api.js stats
+  node li-api.js send <conversation-id> <mensaje>
+  node li-api.js search-jobs <keywords>
+  node li-api.js job-details <job-urn>
 
 Asegúrate de correr primero:
   npm run cdp
@@ -141,6 +168,8 @@ Asegúrate de correr primero:
 }
 
 main();
+
+
 
 
 
