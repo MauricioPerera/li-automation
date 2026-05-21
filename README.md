@@ -138,6 +138,8 @@ await store.persist();
 | `node li-api.js conversations` | Lista de conversaciones de mensajería |
 | `node li-api.js messages <id>` | Historial de mensajes de una conversación |
 | `node li-api.js send <id> "texto"` | Enviar mensaje a una conversación |
+| `node li-api.js create-post 'texto del post'` | Publicar un post |
+| `node li-api.js like <post-urn>` | Dar like a un post |
 | `node li-api.js search-jobs <keywords>` | Buscar ofertas de empleo |
 | `node li-api.js job-details <job-urn>` | Detalles de una oferta de empleo |
 | `node li-api.js stats` | Ver estadísticas del cache local |
@@ -168,6 +170,14 @@ node li-api.js newsletters johndoe
 # => --- Artículo 1 ---
 #    Título: Cómo automatizar procesos con IA
 #    URL: https://www.linkedin.com/pulse/...
+
+# Publicar un post
+node li-api.js create-post "Hola mundo desde la API automatizada"
+# => {"ok":true,"urn":"urn:li:activity:12345..."}
+
+# Dar like a un post
+node li-api.js like "urn:li:activity:12345"
+# => {"ok":true,"urn":"urn:li:activity:12345"}
 
 # Buscar empleos
 node li-api.js search-jobs "software engineer"
@@ -412,6 +422,41 @@ Devuelve los detalles completos de una oferta.
 
 ---
 
+### `createPost(cdp, text, options)`
+
+Publica un post de texto en tu perfil de LinkedIn.
+
+**Endpoint:** `POST /voyager/api/contentcreation/normPromos`
+
+**Options:**
+- `visibility` (string): `PUBLIC` o `CONNECTIONS` (default: `PUBLIC`)
+
+**Respuesta:**
+```json
+{
+  "ok": true,
+  "urn": "urn:li:activity:12345...",
+  "text": "Hola mundo desde la API automatizada"
+}
+```
+
+> **Advertencia:** LinkedIn puede bloquear la cuenta si publicas posts con demasiada frecuencia o contenido duplicado.
+
+---
+
+### `likePost(cdp, postUrn)`
+
+Da like a un post por su URN.
+
+**Endpoint:** `POST /voyager/api/socialActions/{postUrn}/like`
+
+**Respuesta:**
+```json
+{ "ok": true, "urn": "urn:li:activity:12345..." }
+```
+
+---
+
 ### `voyager(cdp, method, path, body?)`
 
 Función de bajo nivel para inyectar cualquier petición fetch dentro del navegador.
@@ -603,6 +648,7 @@ li-automation/
 3. **sendMessage**: aún usa el endpoint REST legacy. Puede fallar si LinkedIn lo migra a GraphQL.
 4. **Posts**: el texto se extrae del componente `articleComponent`. Posts de solo imagen/video pueden devolver texto vacío.
 5. **Dependencia de sesión**: si la sesión de LinkedIn expira, hay que volver a hacer login manualmente en Edge.
+6. **Escritura**: las operaciones de escritura (posts, likes, mensajes) son más fáciles de detectar por LinkedIn. Usa delays entre operaciones y contenido variado.
 6. **Job Search**: usa el endpoint REST `/search/blended` que puede devolver resultados mezclados (no solo jobs). Para búsqueda pura de empleos, los queryIds GraphQL específicos de jobs suelen ser más precisos pero rotan con frecuencia.
 
 ## Licencia

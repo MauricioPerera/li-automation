@@ -21,7 +21,8 @@ const { connectToLinkedIn } = require('./lib/cdp');
 const {
     getProfile, getProfileFull, getProfilePosts, getNewsletterArticles,
     getConversations, getMessages, sendMessage,
-    searchJobs, getJobDetails
+    searchJobs, getJobDetails,
+    createPost, likePost
 } = require('./lib/li');
 const store = require('./lib/store');
 

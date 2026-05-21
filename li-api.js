@@ -141,6 +141,20 @@ async function main() {
                 console.log(JSON.stringify(job, null, 2));
                 break;
             }
+                        case 'create-post': {
+                const text = process.argv[3];
+                if (!text) { console.error('Falta texto del post'); process.exit(1); }
+                const result = await createPost(cdp, text);
+                console.log('Post creado:', JSON.stringify(result, null, 2));
+                break;
+            }
+            case 'like': {
+                const postUrn = process.argv[3];
+                if (!postUrn) { console.error('Falta post-urn'); process.exit(1); }
+                const result = await likePost(cdp, postUrn);
+                console.log('Like dado:', JSON.stringify(result, null, 2));
+                break;
+            }
             default: {
                 console.log(`Comandos disponibles:
   node li-api.js profile
@@ -153,6 +167,8 @@ async function main() {
   node li-api.js send <conversation-id> <mensaje>
   node li-api.js search-jobs <keywords>
   node li-api.js job-details <job-urn>
+  node li-api.js create-post 'texto del post'
+  node li-api.js like <post-urn>
 
 Asegúrate de correr primero:
   npm run cdp
@@ -168,6 +184,7 @@ Asegúrate de correr primero:
 }
 
 main();
+
 
 
 
