@@ -1,0 +1,14 @@
+{
+  "name": "li-automation",
+  "version": "1.0.0",
+  "description": "LinkedIn Desktop automation toolkit via CDP",
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=21.0.0"
+  },
+  "scripts": {
+    "cdp": "powershell -ExecutionPolicy Bypass -File start-li-cdp.ps1",
+    "api": "node li-api.js"
+  }
+}

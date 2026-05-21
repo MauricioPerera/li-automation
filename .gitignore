@@ -1,0 +1,17 @@
+# Cache local de js-doc-store
+.li-store/
+*.docs.json
+*.meta.json
+*.sidx.json
+*.idx.json
+
+# Node
+node_modules/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# PowerShell history
+*.ps1.history
