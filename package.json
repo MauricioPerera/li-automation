@@ -9,6 +9,7 @@
   },
   "scripts": {
     "cdp": "powershell -ExecutionPolicy Bypass -File start-li-cdp.ps1",
-    "api": "node li-api.js"
+    "api": "node li-api.js",
+    "server": "node api-server.js"
   }
 }

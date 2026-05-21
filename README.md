@@ -491,6 +491,93 @@ La sesión se guarda en un perfil dedicado de Edge (`LI-Automation`). No necesit
 
 ---
 
+
+---
+
+## API REST (`api-server.js`)
+
+Para integrar con **n8n**, **Make**, **Zapier** o cualquier otro orquestador, levanta el servidor HTTP:
+
+```powershell
+npm run server
+# o
+node api-server.js
+```
+
+El servidor expone endpoints JSON en `http://localhost:3000` (configurable via variable de entorno `PORT`).
+
+### Endpoints
+
+| Método | Endpoint | Query / Body | Descripción |
+|--------|----------|--------------|-------------|
+| GET | `/health` | — | Estado del servidor y CDP |
+| GET | `/profile` | — | Perfil básico |
+| GET | `/profile-full` | `?urn=` | Perfil completo |
+| GET | `/posts` | `?urn=&start=&count=` | Posts con stats |
+| GET | `/newsletters` | `?publicId=&limit=` | Artículos newsletter |
+| GET | `/conversations` | `?limit=` | Lista de conversaciones |
+| GET | `/messages` | `?id=` | Mensajes de una conversación |
+| POST | `/send` | `{"conversationId":"...","text":"..."}` | Enviar mensaje |
+| GET | `/search-jobs` | `?keywords=&locationUrn=&start=&count=` | Buscar empleos |
+| GET | `/job-details` | `?jobUrn=` | Detalles de empleo |
+| GET | `/stats` | — | Estadísticas de cache |
+
+### Ejemplos con curl
+
+```bash
+# Health check
+curl http://localhost:3000/health
+
+# Perfil
+curl http://localhost:3000/profile
+
+# Conversaciones
+curl http://localhost:3000/conversations
+
+# Enviar mensaje
+curl -X POST http://localhost:3000/send \
+  -H "Content-Type: application/json" \
+  -d '{"conversationId":"abc123...","text":"Hola desde n8n"}'
+
+# Buscar empleos
+curl "http://localhost:3000/search-jobs?keywords=software%20engineer"
+
+# Stats de cache
+curl http://localhost:3000/stats
+```
+
+### Integración con n8n
+
+En n8n, usa el nodo **HTTP Request**:
+
+1. **Método:** `GET` o `POST` según el endpoint.
+2. **URL:** `http://localhost:3000/<endpoint>` (o la IP de la máquina si n8n corre en Docker).
+3. **Body JSON** (solo para POST): activa **Send JSON Body** y envía el payload.
+4. El servidor devuelve siempre JSON; n8n puede mapear los campos directamente con expresiones como `{{ $json.name }}`.
+
+**Workflow típico:**
+
+```
+[Trigger cada 5 min]
+    |
+    v
+[HTTP Request: GET /conversations]
+    |
+    v
+[IF: nueva conversación sin leer]
+    |
+    v
+[HTTP Request: GET /messages?id=...]
+    |
+    v
+[OpenAI / procesamiento]
+    |
+    v
+[HTTP Request: POST /send]
+```
+
+> **Tip:** añade un nodo **HTTP Request** a `/health` al inicio del workflow para validar que Edge con CDP esté activo antes de ejecutar las demás operaciones.
+
 ## Estructura del proyecto
 
 ```
@@ -521,3 +608,4 @@ li-automation/
 ## Licencia
 
 MIT
+
