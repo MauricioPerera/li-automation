@@ -155,6 +155,30 @@ async function main() {
                 console.log('Like dado:', JSON.stringify(result, null, 2));
                 break;
             }
+            case 'comment': {
+                const cPostUrn = process.argv[3];
+                const cText = process.argv[4];
+                if (!cPostUrn || !cText) { console.error('Uso: comment <post-urn> "texto del comentario"'); process.exit(1); }
+                const result = await commentPost(cdp, cPostUrn, cText);
+                console.log('Comentario enviado:', JSON.stringify(result, null, 2));
+                break;
+            }
+            case 'invite': {
+                const iUrn = process.argv[3];
+                const iMsg = process.argv[4] || '';
+                if (!iUrn) { console.error('Uso: invite <profile-urn> ["mensaje personalizado"]'); process.exit(1); }
+                const result = await sendInvite(cdp, iUrn, iMsg);
+                console.log('Invitación enviada:', JSON.stringify(result, null, 2));
+                break;
+            }
+            case 'save-job': {
+                const sUrn = process.argv[3];
+                if (!sUrn) { console.error('Uso: save-job <job-urn>'); process.exit(1); }
+                const result = await saveJob(cdp, sUrn);
+                console.log('Empleo guardado:', JSON.stringify(result, null, 2));
+                break;
+            }
+
             default: {
                 console.log(`Comandos disponibles:
   node li-api.js profile
@@ -169,6 +193,9 @@ async function main() {
   node li-api.js job-details <job-urn>
   node li-api.js create-post 'texto del post'
   node li-api.js like <post-urn>
+  node li-api.js comment <post-urn> "texto del comentario"
+  node li-api.js invite <profile-urn> ["mensaje personalizado"]
+  node li-api.js save-job <job-urn>
 
 Asegúrate de correr primero:
   npm run cdp

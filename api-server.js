@@ -22,7 +22,7 @@ const {
     getProfile, getProfileFull, getProfilePosts, getNewsletterArticles,
     getConversations, getMessages, sendMessage,
     searchJobs, getJobDetails,
-    createPost, likePost
+    createPost, likePost, commentPost, sendInvite, saveJob
 } = require('./lib/li');
 const store = require('./lib/store');
 
@@ -189,6 +189,61 @@ const server = http.createServer(async (req, res) => {
                 if (!q.jobUrn) { json(res, 400, { error: 'Falta query ?jobUrn=...' }); break; }
                 const job = await getJobDetails(cdp9, q.jobUrn);
                 json(res, 200, job);
+                break;
+            }
+
+            /* ── Crear post ───────────────────────────────────────────── */
+            case '/create-post': {
+                if (req.method !== 'POST') { json(res, 405, { error: 'Use POST' }); break; }
+                const body = await parseBody(req);
+                if (!body.text) { json(res, 400, { error: 'Falta text en el body JSON' }); break; }
+                const cdp10 = await ensureCdp();
+                const result = await createPost(cdp10, body.text, { visibility: body.visibility || 'PUBLIC' });
+                json(res, 200, result);
+                break;
+            }
+
+            /* ── Dar like ─────────────────────────────────────────────── */
+            case '/like': {
+                if (req.method !== 'POST') { json(res, 405, { error: 'Use POST' }); break; }
+                const body2 = await parseBody(req);
+                if (!body2.postUrn) { json(res, 400, { error: 'Falta postUrn en el body JSON' }); break; }
+                const cdp11 = await ensureCdp();
+                const result2 = await likePost(cdp11, body2.postUrn);
+                json(res, 200, result2);
+                break;
+            }
+
+            /* ── Comentar post ────────────────────────────────────────── */
+            case '/comment': {
+                if (req.method !== 'POST') { json(res, 405, { error: 'Use POST' }); break; }
+                const body3 = await parseBody(req);
+                if (!body3.postUrn || !body3.text) { json(res, 400, { error: 'Falta postUrn o text en el body JSON' }); break; }
+                const cdp12 = await ensureCdp();
+                const result3 = await commentPost(cdp12, body3.postUrn, body3.text);
+                json(res, 200, result3);
+                break;
+            }
+
+            /* ── Enviar invitación ───────────────────────────────────── */
+            case '/invite': {
+                if (req.method !== 'POST') { json(res, 405, { error: 'Use POST' }); break; }
+                const body4 = await parseBody(req);
+                if (!body4.profileUrn) { json(res, 400, { error: 'Falta profileUrn en el body JSON' }); break; }
+                const cdp13 = await ensureCdp();
+                const result4 = await sendInvite(cdp13, body4.profileUrn, body4.message || '');
+                json(res, 200, result4);
+                break;
+            }
+
+            /* ── Guardar empleo ─────────────────────────────────────── */
+            case '/save-job': {
+                if (req.method !== 'POST') { json(res, 405, { error: 'Use POST' }); break; }
+                const body5 = await parseBody(req);
+                if (!body5.jobUrn) { json(res, 400, { error: 'Falta jobUrn en el body JSON' }); break; }
+                const cdp14 = await ensureCdp();
+                const result5 = await saveJob(cdp14, body5.jobUrn);
+                json(res, 200, result5);
                 break;
             }
 

@@ -140,6 +140,9 @@ await store.persist();
 | `node li-api.js send <id> "texto"` | Enviar mensaje a una conversación |
 | `node li-api.js create-post 'texto del post'` | Publicar un post |
 | `node li-api.js like <post-urn>` | Dar like a un post |
+| `node li-api.js comment <post-urn> "texto"` | Comentar un post |
+| `node li-api.js invite <profile-urn> [mensaje]` | Enviar solicitud de conexión |
+| `node li-api.js save-job <job-urn>` | Guardar un empleo |
 | `node li-api.js search-jobs <keywords>` | Buscar ofertas de empleo |
 | `node li-api.js job-details <job-urn>` | Detalles de una oferta de empleo |
 | `node li-api.js stats` | Ver estadísticas del cache local |
@@ -190,6 +193,20 @@ node li-api.js search-jobs "software engineer"
 # Detalles de un empleo
 node li-api.js job-details "urn:li:fsd_jobPosting:12345"
 # => { "title": "Senior Software Engineer", "company": "ACME Corp", ... }
+```
+
+```powershell
+# Comentar un post
+node li-api.js comment "urn:li:activity:12345" "Gran contenido, gracias por compartir"
+# => {"ok":true,"urn":"urn:li:activity:12345","commentId":"..."}
+
+# Enviar solicitud de conexión
+node li-api.js invite "urn:li:fsd_profile:ACoXXXXX..." "Hola, me interesa conectar contigo"
+# => {"ok":true,"profileUrn":"...","trackingId":"..."}
+
+# Guardar un empleo
+node li-api.js save-job "urn:li:fsd_jobPosting:12345"
+# => {"ok":true,"jobUrn":"...","saved":true}
 ```
 
 ---
@@ -457,6 +474,59 @@ Da like a un post por su URN.
 
 ---
 
+### `commentPost(cdp, postUrn, text)`
+
+Comenta en un post por su URN.
+
+**Endpoint:** `POST /voyager/api/feed/updates/{postUrn}/comments`
+
+**Respuesta:**
+```json
+{
+  "ok": true,
+  "urn": "urn:li:activity:12345...",
+  "commentId": "urn:li:fsd_comment:..."
+}
+```
+
+---
+
+### `sendInvite(cdp, profileUrn, message?)`
+
+Envía una solicitud de conexión a un perfil.
+
+**Endpoint:** `POST /voyager/api/growth/invitations`
+
+**Respuesta:**
+```json
+{
+  "ok": true,
+  "profileUrn": "urn:li:fsd_profile:...",
+  "trackingId": "..."
+}
+```
+
+> **Nota:** Si el perfil requiere email para conectar, la invitación fallará. LinkedIn limita las invitaciones pendientes a ~3000.
+
+---
+
+### `saveJob(cdp, jobUrn)`
+
+Guarda un empleo para aplicar después.
+
+**Endpoint:** `POST /voyager/api/jobs/jobPostings/{jobUrn}/saveState`
+
+**Respuesta:**
+```json
+{
+  "ok": true,
+  "jobUrn": "urn:li:fsd_jobPosting:...",
+  "saved": true
+}
+```
+
+---
+
 ### `voyager(cdp, method, path, body?)`
 
 Función de bajo nivel para inyectar cualquier petición fetch dentro del navegador.
@@ -648,7 +718,7 @@ li-automation/
 3. **sendMessage**: aún usa el endpoint REST legacy. Puede fallar si LinkedIn lo migra a GraphQL.
 4. **Posts**: el texto se extrae del componente `articleComponent`. Posts de solo imagen/video pueden devolver texto vacío.
 5. **Dependencia de sesión**: si la sesión de LinkedIn expira, hay que volver a hacer login manualmente en Edge.
-6. **Escritura**: las operaciones de escritura (posts, likes, mensajes) son más fáciles de detectar por LinkedIn. Usa delays entre operaciones y contenido variado.
+6. **Escritura**: LinkedIn limita activamente las invitaciones de conexión (~3000 pendientes máximo). Los posts, likes y comentarios con demasiada frecuencia pueden activar revisiones de cuenta. Usa delays entre operaciones.
 6. **Job Search**: usa el endpoint REST `/search/blended` que puede devolver resultados mezclados (no solo jobs). Para búsqueda pura de empleos, los queryIds GraphQL específicos de jobs suelen ser más precisos pero rotan con frecuencia.
 
 ## Licencia
