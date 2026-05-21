@@ -2,9 +2,14 @@
 
 LinkedIn Desktop automation toolkit via Chrome DevTools Protocol (CDP).
 
+> **IMPORTANTE — Qué app usar:**
+> Este toolkit **NO funciona con la app nativa de LinkedIn de Microsoft Store**. Debes usar **Microsoft Edge como Progressive Web App (PWA)** de LinkedIn. Edge expone el puerto de depuración remota (CDP) que necesitamos para inyectar código JavaScript y hacer peticiones autenticadas.
+
+---
+
 ## Arquitectura
 
-En lugar de extraer cookies y hacer peticiones HTTP desde Node.js (lo cual LinkedIn detecta por el TLS fingerprint diferente), este toolkit **inyecta `fetch()` directamente dentro del WebView2/Edge donde ya tienes tu sesión de LinkedIn iniciada**. Las peticiones salen con las mismas cookies, headers y fingerprint que si las hicieras tú mismo desde la app.
+En lugar de extraer cookies y hacer peticiones HTTP desde Node.js (lo cual LinkedIn detecta por el TLS fingerprint diferente), este toolkit **inyecta `fetch()` directamente dentro del Edge donde ya tienes tu sesión de LinkedIn iniciada**. Las peticiones salen con las mismas cookies, headers y fingerprint que si las hicieras tú mismo desde la app.
 
 ```
 Node.js (li-api.js)
@@ -20,13 +25,60 @@ CdpClient (lib/cdp.js)  -- WebSocket -->  Edge con LinkedIn (CDP :9222)
                                          LinkedIn GraphQL API
 ```
 
-## Requisitos
+---
 
-- Node.js >= 21.0.0 (WebSocket global)
-- Microsoft Edge instalado
-- Sesión de LinkedIn iniciada (se guarda en perfil dedicado)
+## App de LinkedIn a usar
 
-## Setup
+### ❌ NO usar: LinkedIn de Microsoft Store
+
+La app UWP de LinkedIn que descargas desde Microsoft Store **no expone CDP**. No podemos conectar Node.js a ella. El script `start-li-native.ps1` incluido es solo una prueba de concepto que no funciona.
+
+### ✅ USAR: Microsoft Edge como PWA de LinkedIn
+
+El toolkit automatiza el lanzamiento de Edge como una app dedicada de LinkedIn con el puerto de depuración remota activado.
+
+#### Requisitos previos
+
+1. **Microsoft Edge** instalado (viene por defecto en Windows 10/11).
+2. **Node.js >= 21.0.0** (por el WebSocket global).
+3. Una cuenta de LinkedIn (la sesión se guarda en un perfil de Edge dedicado).
+
+#### Primera vez — Preparar el entorno
+
+```powershell
+# 1. Clonar o descargar este repo
+# 2. Instalar dependencias (no hay externas, pero por si acaso)
+npm install
+
+# 3. Lanza Edge como app de LinkedIn con Remote Debugging en puerto 9222
+npm run cdp
+```
+
+El comando `npm run cdp` ejecuta `start-li-cdp.ps1`, que:
+- Detecta si ya hay una instancia de Edge con CDP en el puerto 9222.
+- Si no existe, lanza Edge con `--app=https://www.linkedin.com` en un **perfil dedicado** (`LI-Automation`) separado de tu perfil principal de navegación.
+- Espera hasta 24 segundos a que CDP responda.
+
+#### Iniciar sesión en LinkedIn (solo la primera vez)
+
+Cuando Edge se abra como app de LinkedIn:
+1. Ingresa tu email y contraseña de LinkedIn.
+2. Completa la verificación de dos factores si la tienes activada.
+3. La sesión se guarda automáticamente en el perfil `LI-Automation`. No necesitas volver a loguearte.
+
+#### Verificar que funciona
+
+```powershell
+# En otra terminal (PowerShell o CMD), con Edge abierto:
+node li-api.js profile
+
+# Debería devolver algo como:
+# {"name":"John Doe","publicId":"johndoe",...}
+```
+
+---
+
+## Setup resumido
 
 ```powershell
 # 1. Lanza Edge como app de LinkedIn con remote debugging
@@ -34,7 +86,10 @@ npm run cdp
 
 # 2. Haz login la primera vez (se guarda en el perfil dedicado)
 # 3. En otra terminal, ejecuta cualquier comando CLI
+node li-api.js profile
 ```
+
+---
 
 ## Cache local con js-doc-store
 
@@ -54,8 +109,6 @@ Todas las funciones de `lib/li.js` usan una capa de persistencia local (`lib/sto
 
 ```powershell
 # Ver estadísticas del cache
-| `node li-api.js search-jobs <keywords>` | Buscar ofertas de empleo |
-| `node li-api.js job-details <job-urn>` | Detalles de una oferta de empleo |
 node li-api.js stats
 ```
 
@@ -72,6 +125,8 @@ console.log(s); // { profiles: 1, posts: 0, conversations: 20, ... }
 await store.persist();
 ```
 
+---
+
 ## CLI Commands
 
 | Comando | Descripción |
@@ -83,6 +138,8 @@ await store.persist();
 | `node li-api.js conversations` | Lista de conversaciones de mensajería |
 | `node li-api.js messages <id>` | Historial de mensajes de una conversación |
 | `node li-api.js send <id> "texto"` | Enviar mensaje a una conversación |
+| `node li-api.js search-jobs <keywords>` | Buscar ofertas de empleo |
+| `node li-api.js job-details <job-urn>` | Detalles de una oferta de empleo |
 | `node li-api.js stats` | Ver estadísticas del cache local |
 
 ### Ejemplos
@@ -111,9 +168,7 @@ node li-api.js newsletters johndoe
 # => --- Artículo 1 ---
 #    Título: Cómo automatizar procesos con IA
 #    URL: https://www.linkedin.com/pulse/...
-```
 
-```powershell
 # Buscar empleos
 node li-api.js search-jobs "software engineer"
 # => --- Trabajo 1 ---
@@ -127,6 +182,7 @@ node li-api.js job-details "urn:li:fsd_jobPosting:12345"
 # => { "title": "Senior Software Engineer", "company": "ACME Corp", ... }
 ```
 
+---
 
 ## API Programática (lib/li.js)
 
@@ -196,21 +252,19 @@ Devuelve los posts/recursos compartidos del perfil con estadísticas de engageme
       }
     }
   ],
-  "hasMore": false,
-  "total": 20
+  "hasMore": true,
+  "total": 150
 }
 ```
 
 ---
 
-### `getNewsletterArticles(cdp, profilePublicId, options)`
+### `getNewsletterArticles(cdp, profilePublicId?, options)`
 
-Extrae los artículos de newsletter del perfil navegando a `/recent-activity/articles/` y extrayendo los links del DOM.
-
-**URL navegada:** `https://www.linkedin.com/in/{publicId}/recent-activity/articles/`
+Extrae artículos de newsletter del perfil navegando al DOM de `/recent-activity/articles/`.
 
 **Options:**
-- `limit` (number): cantidad máxima de artículos (default: 20)
+- `limit` (number): cantidad de artículos (default: 20)
 
 **Respuesta:**
 ```json
@@ -218,8 +272,8 @@ Extrae los artículos de newsletter del perfil navegando a `/recent-activity/art
   {
     "href": "https://www.linkedin.com/pulse/...",
     "title": "Cómo automatizar procesos con IA",
-    "description": "por John Doe • 5 min de lectura",
-    "date": ""
+    "description": "Resumen del artículo...",
+    "date": "20 may 2026"
   }
 ]
 ```
@@ -239,17 +293,12 @@ Devuelve la lista de conversaciones de mensajería. Consulta cache primero.
 ```json
 [
   {
-    "id": "abc123...",
-    "urn": "urn:li:msg_conversation:(...)",
-    "unread": true,
-    "unreadCount": 1,
-    "lastActivityAt": 1774736015305,
+    "id": "urn:li:fsd_conversation:...",
     "participants": [
-      { "name": "John Doe", "publicId": "johndoe", "headline": "..." },
       { "name": "Jane Smith", "publicId": "janesmith", "headline": "..." }
     ],
-    "lastMessage": { "id": "...", "sentAt": 1774736015305, "from": {...}, "body": "Hola...", "hasMedia": false },
-    "conversationUrl": "https://www.linkedin.com/messaging/thread/..."
+    "unread": true,
+    "lastMessage": { "body": "Hey John...", "sentAt": 1774736015305 }
   }
 ]
 ```
@@ -361,7 +410,6 @@ Devuelve los detalles completos de una oferta.
 }
 ```
 
-
 ---
 
 ### `voyager(cdp, method, path, body?)`
@@ -400,6 +448,8 @@ performance.getEntriesByType('resource')
   .filter(Boolean)
 ```
 
+---
+
 ## CDP Client (lib/cdp.js)
 
 ### `connectToLinkedIn(port = 9222)`
@@ -414,6 +464,8 @@ Conecta al target de LinkedIn en CDP. Soporta fallback vía browser WebSocket si
 | `send(method, params, timeoutMs)` | Envía un comando CDP y espera respuesta |
 | `evaluate(expression, awaitPromise, timeoutMs)` | Evalúa JavaScript en el contexto de la página |
 | `close()` | Cierra la conexión |
+
+---
 
 ## Notas de implementación
 
@@ -437,6 +489,8 @@ Los endpoints GraphQL de LinkedIn requieren encoding especial de los dos puntos 
 
 La sesión se guarda en un perfil dedicado de Edge (`LI-Automation`). No necesitas hacer login cada vez, solo la primera.
 
+---
+
 ## Estructura del proyecto
 
 ```
@@ -452,6 +506,8 @@ li-automation/
 ├── start-li-native.ps1     # Script de prueba para app nativa (no funciona)
 └── .gitignore              # Excluye .li-store/ y node_modules/
 ```
+
+---
 
 ## Limitaciones conocidas
 
